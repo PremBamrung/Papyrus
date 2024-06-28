@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 import numpy as np
 import cv2
@@ -20,23 +18,20 @@ def image_to_bytes(image: np.ndarray) -> BytesIO:
     _, img_encoded = cv2.imencode('.jpg', image)
     return BytesIO(img_encoded.tobytes())
 
-def generate_download_link(image_bytes: BytesIO, filename: str) -> str:
-    """Generate a download link for the image.
+def generate_download_button(image_bytes: BytesIO, filename: str):
+    """Generate a download button for the image.
     
     Args:
         image_bytes (BytesIO): The image in bytes.
         filename (str): The name for the downloaded file.
-    
-    Returns:
-        str: The HTML link for downloading the image.
     """
-    b64 = base64.b64encode(image_bytes.getvalue()).decode()
-    href = f'<a href="data:file/jpeg;base64,{b64}" download="{filename}">Download {filename}</a>'
-    return href
+    st.sidebar.download_button(label="Download image", data=image_bytes, file_name=filename, mime="image/jpeg")
 
 def main():
     """Main function to run the Streamlit app."""
-    st.title("Document Scanner App")
+    st.set_page_config(layout="wide")  # Set the app layout to wide mode
+    st.title("Papyrus")
+    st.subheader("Document Scanner App")
 
     # Single file uploader for image upload
     uploaded_file = st.file_uploader("Upload Image", accept_multiple_files=False, type=["jpg", "png"])
@@ -48,7 +43,6 @@ def main():
     gaussian_blur_size = st.sidebar.slider("Gaussian Blur Size", 1, 15, 5, step=2)
     final_image_format = st.sidebar.radio("Choose Final Image Format", ('Color', 'Black & White'))
 
-    ############ ADDITION: FUNCTION FOR VALID CONTOUR CHECK #################
     def find_screen_contour(contours: list[np.ndarray]) -> np.ndarray:
         """Find the appropriate screen contour with 4 points.
         
@@ -64,7 +58,6 @@ def main():
             if len(approx) == 4:
                 return approx
         return None
-    ############################################################################
     
     def draw_contours(image: np.ndarray, contours: np.ndarray) -> np.ndarray:
         """Draw contours on the image.
@@ -126,8 +119,7 @@ def main():
                 st.image(cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB), caption="Final Processed Image", use_column_width=True)
 
             final_image_bytes = image_to_bytes(final_image)
-            download_link = generate_download_link(final_image_bytes, "Scanned.jpg")
-            st.markdown(download_link, unsafe_allow_html=True)
+            generate_download_button(final_image_bytes, "Scanned.jpg")
         except Exception as e:
             st.warning(f"Could not process image. Error: {e}")
 
