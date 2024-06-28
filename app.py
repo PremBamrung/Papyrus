@@ -4,6 +4,7 @@ import cv2
 from io import BytesIO
 import imutils
 import scan
+import hmac
 
 def image_to_bytes(image: np.ndarray) -> BytesIO:
     """Convert an image to bytes.
@@ -25,13 +26,39 @@ def generate_download_button(image_bytes: BytesIO, filename: str):
         filename (str): The name for the downloaded file.
     """
     st.sidebar.download_button(label="Download image", data=image_bytes, file_name=filename, mime="image/jpeg")
+    
+def check_password():
+    """Returns `True` if the user had the correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store the password.
+        else:
+            st.session_state["password_correct"] = False
+
+    # Return True if the password is validated.
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Show input for password.
+    st.text_input(
+        "Password", type="password", on_change=password_entered, key="password"
+    )
+    if "password_correct" in st.session_state:
+        st.error("😕 Password incorrect")
+    return False
+
+
 
 def main():
     """Main function to run the Streamlit app."""
     st.set_page_config(layout="wide")  # Set the app layout to wide mode
     st.title("Papyrus")
     st.subheader("Document Scanner App")
-
+    if not check_password():
+        st.stop()  # Do not continue if check_password is not True.
     # Single file uploader for image upload
     uploaded_file = st.file_uploader("Upload Image", accept_multiple_files=False, type=["jpg", "png"])
 
