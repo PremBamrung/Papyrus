@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import cv2
 from io import BytesIO
-import base64
 import imutils
 import scan
 
@@ -42,6 +41,26 @@ def main():
     canny_thresh2 = st.sidebar.slider("Canny Threshold 2", 0, 255, 150)
     gaussian_blur_size = st.sidebar.slider("Gaussian Blur Size", 1, 15, 5, step=2)
     final_image_format = st.sidebar.radio("Choose Final Image Format", ('Color', 'Black & White'))
+
+    # Additional parameters for B&W conversion if the user selects Black & White
+    if final_image_format == 'Black & White':
+        method = st.sidebar.selectbox("Thresholding Method", ['adaptive', 'clahe', 'otsu', 'combined'])
+
+        if method == 'adaptive':
+            with st.sidebar.expander("Adaptive Threshold Parameters"):
+                adaptive_block_size = st.sidebar.slider("Block Size", 3, 51, 35, step=2)
+                adaptive_c = st.sidebar.slider("C", 0, 30, 11)
+        elif method == 'clahe':
+            with st.sidebar.expander("CLAHE Parameters"):
+                clahe_clip_limit = st.sidebar.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
+        elif method == 'otsu':
+            with st.sidebar.expander("Otsu's Method Parameters"):
+                otsu_blur_size = st.sidebar.slider("Blur Size", 1, 15, 5, step=2)
+        elif method == 'combined':
+            with st.sidebar.expander("Combined Parameters"):
+                combined_block_size = st.sidebar.slider("Block Size", 3, 51, 11, step=2)
+                adaptive_c_comb = st.sidebar.slider("C", 0, 10, 2)
+                clahe_clip_limit_comb = st.sidebar.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
 
     def find_screen_contour(contours: list[np.ndarray]) -> np.ndarray:
         """Find the appropriate screen contour with 4 points.
@@ -107,7 +126,14 @@ def main():
             warped_image = scan.four_point_transform(orig_image, screen_contour.reshape(4, 2) * ratio)
 
             if final_image_format == 'Black & White':
-                final_image = scan.apply_threshold(warped_image)
+                if method == 'adaptive':
+                    final_image = scan.apply_threshold(warped_image, method='adaptive', block_size=adaptive_block_size, c=adaptive_c)
+                elif method == 'clahe':
+                    final_image = scan.apply_threshold(warped_image, method='clahe', clip_limit=clahe_clip_limit)
+                elif method == 'otsu':
+                    final_image = scan.apply_threshold(warped_image, method='otsu', blur_size=otsu_blur_size)
+                elif method == 'combined':
+                    final_image = scan.apply_threshold(warped_image, method='combined', block_size=combined_block_size, c=adaptive_c_comb, clip_limit=clahe_clip_limit_comb)
             else:
                 final_image = warped_image
 
