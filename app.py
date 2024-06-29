@@ -63,31 +63,35 @@ def main():
     uploaded_file = st.file_uploader("Upload Image", accept_multiple_files=False, type=["jpg", "png"])
 
     # Sidebar for user parameters
-    st.sidebar.title("Parameters")
-    canny_thresh1 = st.sidebar.slider("Canny Threshold 1", 0, 255, 50)
-    canny_thresh2 = st.sidebar.slider("Canny Threshold 2", 0, 255, 150)
-    gaussian_blur_size = st.sidebar.slider("Gaussian Blur Size", 1, 15, 5, step=2)
-    final_image_format = st.sidebar.radio("Choose Final Image Format", ('Color', 'Black & White'))
+    with st.sidebar:
+        st.title("Parameters")
+        with st.expander("Edge detection"):
+            canny_thresh1 = st.slider("Canny Threshold 1", 0, 255, 50)
+            canny_thresh2 = st.slider("Canny Threshold 2", 0, 255, 150)
+            gaussian_blur_size = st.slider("Gaussian Blur Size", 1, 15, 5, step=2)
+        
+    
+        final_image_format = st.radio("Choose Final Image Format", ('Color', 'Black & White'))
 
-    # Additional parameters for B&W conversion if the user selects Black & White
-    if final_image_format == 'Black & White':
-        method = st.sidebar.selectbox("Thresholding Method", ['adaptive', 'clahe', 'otsu', 'combined'])
+        # Additional parameters for B&W conversion if the user selects Black & White
+        if final_image_format == 'Black & White':
+            method = st.selectbox("Thresholding Method", ['adaptive', 'clahe', 'otsu', 'combined'])
 
-        if method == 'adaptive':
-            with st.sidebar.expander("Adaptive Threshold Parameters"):
-                adaptive_block_size = st.sidebar.slider("Block Size", 3, 51, 35, step=2)
-                adaptive_c = st.sidebar.slider("C", 0, 30, 11)
-        elif method == 'clahe':
-            with st.sidebar.expander("CLAHE Parameters"):
-                clahe_clip_limit = st.sidebar.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
-        elif method == 'otsu':
-            with st.sidebar.expander("Otsu's Method Parameters"):
-                otsu_blur_size = st.sidebar.slider("Blur Size", 1, 15, 5, step=2)
-        elif method == 'combined':
-            with st.sidebar.expander("Combined Parameters"):
-                combined_block_size = st.sidebar.slider("Block Size", 3, 51, 11, step=2)
-                adaptive_c_comb = st.sidebar.slider("C", 0, 10, 2)
-                clahe_clip_limit_comb = st.sidebar.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
+            if method == 'adaptive':
+                with st.expander("Adaptive Threshold Parameters",expanded=True):
+                    adaptive_block_size = st.slider("Block Size", 3, 51, 35, step=2)
+                    adaptive_c = st.slider("C", 0, 30, 11)
+            elif method == 'clahe':
+                with st.expander("CLAHE Parameters",expanded=True):
+                    clahe_clip_limit = st.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
+            elif method == 'otsu':
+                with st.expander("Otsu's Method Parameters",expanded=True):
+                    otsu_blur_size = st.slider("Blur Size", 1, 15, 5, step=2)
+            elif method == 'combined':
+                with st.expander("Combined Parameters",expanded=True):
+                    combined_block_size = st.slider("Block Size", 3, 51, 11, step=2)
+                    adaptive_c_comb = st.slider("C", 0, 10, 2)
+                    clahe_clip_limit_comb = st.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
 
     def find_screen_contour(contours: list[np.ndarray]) -> np.ndarray:
         """Find the appropriate screen contour with 4 points.
