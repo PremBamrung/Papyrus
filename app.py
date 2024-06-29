@@ -50,8 +50,6 @@ def check_password():
         st.error("😕 Password incorrect")
     return False
 
-
-
 def main():
     """Main function to run the Streamlit app."""
     st.set_page_config(layout="wide")  # Set the app layout to wide mode
@@ -69,8 +67,7 @@ def main():
             canny_thresh1 = st.slider("Canny Threshold 1", 0, 255, 50)
             canny_thresh2 = st.slider("Canny Threshold 2", 0, 255, 150)
             gaussian_blur_size = st.slider("Gaussian Blur Size", 1, 15, 5, step=2)
-        
-    
+
         final_image_format = st.radio("Choose Final Image Format", ('Color', 'Black & White'))
 
         # Additional parameters for B&W conversion if the user selects Black & White
@@ -78,20 +75,22 @@ def main():
             method = st.selectbox("Thresholding Method", ['adaptive', 'clahe', 'otsu', 'combined'])
 
             if method == 'adaptive':
-                with st.expander("Adaptive Threshold Parameters",expanded=True):
+                with st.expander("Adaptive Threshold Parameters", expanded=True):
                     adaptive_block_size = st.slider("Block Size", 3, 51, 35, step=2)
                     adaptive_c = st.slider("C", 0, 30, 11)
             elif method == 'clahe':
-                with st.expander("CLAHE Parameters",expanded=True):
+                with st.expander("CLAHE Parameters", expanded=True):
                     clahe_clip_limit = st.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
             elif method == 'otsu':
-                with st.expander("Otsu's Method Parameters",expanded=True):
+                with st.expander("Otsu's Method Parameters", expanded=True):
                     otsu_blur_size = st.slider("Blur Size", 1, 15, 5, step=2)
             elif method == 'combined':
-                with st.expander("Combined Parameters",expanded=True):
+                with st.expander("Combined Parameters", expanded=True):
                     combined_block_size = st.slider("Block Size", 3, 51, 11, step=2)
                     adaptive_c_comb = st.slider("C", 0, 10, 2)
                     clahe_clip_limit_comb = st.slider("Clip Limit", 1.0, 4.0, 2.0, step=0.1)
+
+        show_contours = st.checkbox("Show  contours", value=True)
 
     def find_screen_contour(contours: list[np.ndarray]) -> np.ndarray:
         """Find the appropriate screen contour with 4 points.
@@ -108,7 +107,7 @@ def main():
             if len(approx) == 4:
                 return approx
         return None
-    
+
     def draw_contours(image: np.ndarray, contours: np.ndarray) -> np.ndarray:
         """Draw contours on the image.
         
@@ -133,11 +132,12 @@ def main():
                 raise ValueError("Failed to decode the image")
             
             st.write("Processing Image")
-            
+            resize_height=1000.0
             # Process the image
-            ratio = image.shape[0] / 500.0
+            ratio = image.shape[0] / resize_height
             orig_image = image.copy()
-            resized_image = imutils.resize(image, height=500)
+            resized_image = imutils.resize(image, height=int(resize_height))
+            
             gray_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
             blurred_image = cv2.GaussianBlur(gray_image, (gaussian_blur_size, gaussian_blur_size), 0)
             edged_image = cv2.Canny(blurred_image, canny_thresh1, canny_thresh2)
@@ -150,8 +150,11 @@ def main():
             if screen_contour is None:
                 raise ValueError("Could not find a valid contour")
 
-            # Draw contours on the original image
-            original_with_contours = draw_contours(orig_image, screen_contour.reshape(4, 2) * ratio)
+            if show_contours:
+                original_with_contours=draw_contours(resized_image,screen_contour)
+                
+            else:
+                original_with_contours = image
 
             # Apply four-point transform to get the top-down view
             warped_image = scan.four_point_transform(orig_image, screen_contour.reshape(4, 2) * ratio)
