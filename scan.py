@@ -1,15 +1,15 @@
-import numpy as np
+import glob
+import os
+
 import cv2
 import imutils
-from skimage.filters import threshold_local
-import os
-import glob
+import numpy as np
 from tqdm import tqdm
-from typing import List, Tuple
+
 
 def four_point_transform(image: np.ndarray, pts: np.ndarray) -> np.ndarray:
     """Perform a four-point perspective transform on an image.
-    
+
     Args:
         image (np.ndarray): The input image.
         pts (np.ndarray): A NumPy array of shape (4, 2) representing the four points.
@@ -31,11 +31,10 @@ def four_point_transform(image: np.ndarray, pts: np.ndarray) -> np.ndarray:
     maxHeight = max(int(heightA), int(heightB))
 
     # Construct the destination points for the perspective transform
-    dst = np.array([
-        [0, 0],
-        [maxWidth - 1, 0],
-        [maxWidth - 1, maxHeight - 1],
-        [0, maxHeight - 1]], dtype="float32")
+    dst = np.array(
+        [[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]],
+        dtype="float32",
+    )
 
     # Compute the perspective transform matrix and apply it
     M = cv2.getPerspectiveTransform(rect, dst)
@@ -43,9 +42,10 @@ def four_point_transform(image: np.ndarray, pts: np.ndarray) -> np.ndarray:
 
     return warped
 
+
 def order_points(pts: np.ndarray) -> np.ndarray:
     """Order points in a consistent manner: top-left, top-right, bottom-right, and bottom-left.
-    
+
     Args:
         pts (np.ndarray): A NumPy array of shape (4, 2) representing the four points.
 
@@ -68,14 +68,18 @@ def order_points(pts: np.ndarray) -> np.ndarray:
 
     return rect
 
-def adaptive_threshold(image: np.ndarray, block_size: int = 35, c: int = 20) -> np.ndarray:
+
+def adaptive_threshold(
+    image: np.ndarray, block_size: int = 35, c: int = 20
+) -> np.ndarray:
     """Convert image to black and white using adaptive thresholding."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    threshed = cv2.adaptiveThreshold(blurred, 255, 
-                                     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                     cv2.THRESH_BINARY, block_size, c)
+    threshed = cv2.adaptiveThreshold(
+        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c
+    )
     return threshed
+
 
 def apply_clahe(image: np.ndarray, clip_limit: float = 2.0) -> np.ndarray:
     """Apply CLAHE to enhance local contrast."""
@@ -84,13 +88,22 @@ def apply_clahe(image: np.ndarray, clip_limit: float = 2.0) -> np.ndarray:
     cl1 = clahe.apply(gray)
     return cl1
 
-def combined_clahe_threshold(image: np.ndarray, block_size: int = 11, c: int = 2, clip_limit: float = 2.0) -> np.ndarray:
+
+def combined_clahe_threshold(
+    image: np.ndarray, block_size: int = 11, c: int = 2, clip_limit: float = 2.0
+) -> np.ndarray:
     """Apply CLAHE followed by adaptive thresholding."""
     enhanced_gray = apply_clahe(image, clip_limit)
-    threshed = cv2.adaptiveThreshold(enhanced_gray, 255, 
-                                     cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                     cv2.THRESH_BINARY, block_size, c)
+    threshed = cv2.adaptiveThreshold(
+        enhanced_gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        block_size,
+        c,
+    )
     return threshed
+
 
 def otsu_threshold(image: np.ndarray, blur_size: int = 5) -> np.ndarray:
     """Convert image to black and white using Otsu's method."""
@@ -99,14 +112,17 @@ def otsu_threshold(image: np.ndarray, blur_size: int = 5) -> np.ndarray:
     _, threshed = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return threshed
 
-def apply_morphological_operations(image: np.ndarray, kernel_size: int = 3) -> np.ndarray:
+
+def apply_morphological_operations(
+    image: np.ndarray, kernel_size: int = 3
+) -> np.ndarray:
     """
     Apply morphological operations to remove noise from binary image.
-    
+
     Args:
         image (np.ndarray): The binary image on which to apply morphological operations.
         kernel_size (int): Size of the kernel. Default is 3.
-    
+
     Returns:
         np.ndarray: Image after morphological operation.
     """
@@ -117,14 +133,22 @@ def apply_morphological_operations(image: np.ndarray, kernel_size: int = 3) -> n
     return clean_bw
 
 
-def apply_threshold(image: np.ndarray, method: str = "adaptive", block_size: int = 35, c: int = 11, clip_limit: float = 2.0, blur_size: int = 5, 
-                    morph_op: bool = True, kernel_size: int = 3) -> np.ndarray:
+def apply_threshold(
+    image: np.ndarray,
+    method: str = "adaptive",
+    block_size: int = 35,
+    c: int = 11,
+    clip_limit: float = 2.0,
+    blur_size: int = 5,
+    morph_op: bool = True,
+    kernel_size: int = 3,
+) -> np.ndarray:
     """
     Convert image to black and white using different threshold methods and optionally apply morphological operations.
-    
+
     Args:
         image (np.ndarray): The input image in BGR format.
-        method (str): The thresholding method to use. Options are "adaptive", 
+        method (str): The thresholding method to use. Options are "adaptive",
                       "clahe", "otsu", and "combined".
         block_size (int): Block size for adaptive thresholding.
         c (int): Constant subtracted from mean or weighted mean for adaptive thresholding.
@@ -132,7 +156,7 @@ def apply_threshold(image: np.ndarray, method: str = "adaptive", block_size: int
         blur_size (int): Kernel size for Gaussian blur in Otsu's method.
         morph_op (str): Morphological operation to use. Options are "open", "close", "erode", "dilate".
         kernel_size (int): Size of the kernel for morphological operation. Default is 3.
-    
+
     Returns:
         np.ndarray: The thresholded image in binary form with optional morphological operations applied.
     """
@@ -149,29 +173,34 @@ def apply_threshold(image: np.ndarray, method: str = "adaptive", block_size: int
 
     if morph_op:
         binary_img = apply_morphological_operations(binary_img, kernel_size)
-    
+
     return binary_img
 
-def process_image(image: np.ndarray, canny_thresh1: int = 0, canny_thresh2: int = 100, 
-                  gaussian_blur_size: int = 5) -> np.ndarray:
+
+def process_image(
+    image: np.ndarray,
+    canny_thresh1: int = 0,
+    canny_thresh2: int = 100,
+    gaussian_blur_size: int = 5,
+) -> np.ndarray:
     """
     Process an image to detect document boundary and apply a perspective transform.
-    
+
     Args:
         image (np.ndarray): Input image data.
         canny_thresh1 (int): First threshold for the Canny edge detector. Defaults to 0.
         canny_thresh2 (int): Second threshold for the Canny edge detector. Defaults to 100.
         gaussian_blur_size (int): Kernel size for Gaussian blur. Defaults to 5.
-    
+
     Returns:
         np.ndarray: The warped and transformed image.
-    
+
     Raises:
         ValueError: If no contour is detected.
     """
     if image is None:
         raise ValueError("Image is None.")
-    
+
     # Resize and process the image
     ratio = image.shape[0] / 500.0
     orig = image.copy()
@@ -195,17 +224,26 @@ def process_image(image: np.ndarray, canny_thresh1: int = 0, canny_thresh2: int 
 
     if screenCnt is None:
         raise ValueError("Could not find contour")
-    
+
     # Apply four-point transform to get the top-down view
     warped = four_point_transform(orig, screenCnt.reshape(4, 2) * ratio)
     return warped
 
-def process_images_in_directory(input_directory: str, output_directory: str, canny_thresh1: int, 
-                                canny_thresh2: int, gaussian_blur_size: int, method: str,
-                                convert_to_bw: bool, morph_op: bool=False, kernel_size: int = 3) -> None:
+
+def process_images_in_directory(
+    input_directory: str,
+    output_directory: str,
+    canny_thresh1: int,
+    canny_thresh2: int,
+    gaussian_blur_size: int,
+    method: str,
+    convert_to_bw: bool,
+    morph_op: bool = False,
+    kernel_size: int = 3,
+) -> None:
     """
     Process all images in a directory and save the scanned results.
-    
+
     Args:
         input_directory (str): Path to the input image directory.
         output_directory (str): Path to the output directory.
@@ -218,8 +256,8 @@ def process_images_in_directory(input_directory: str, output_directory: str, can
         kernel_size (int): Size of the kernel for morphological operation. Default is 3.
     """
     os.makedirs(output_directory, exist_ok=True)
-    
-    extensions = ('*.jpg', '*.png')
+
+    extensions = ("*.jpg", "*.png")
     image_paths = []
     for ext in extensions:
         image_paths.extend(glob.glob(os.path.join(input_directory, ext)))
@@ -233,43 +271,83 @@ def process_images_in_directory(input_directory: str, output_directory: str, can
             image = cv2.imread(image_path)
             if image is None:
                 raise FileNotFoundError(f"Image at {image_path} could not be read.")
-            
-            warped = process_image(image, canny_thresh1, canny_thresh2, gaussian_blur_size)
+
+            warped = process_image(
+                image, canny_thresh1, canny_thresh2, gaussian_blur_size
+            )
 
             if convert_to_bw:
-                final_image = apply_threshold(warped, method=method, morph_op=morph_op, kernel_size=kernel_size)
+                final_image = apply_threshold(
+                    warped, method=method, morph_op=morph_op, kernel_size=kernel_size
+                )
             else:
                 final_image = warped
-            
+
             base_name = os.path.splitext(os.path.basename(image_path))[0]
             output_path = os.path.join(output_directory, f"{base_name}_scanned.jpg")
             cv2.imwrite(output_path, final_image)
         except Exception as e:
             print(f"Error processing {image_path}: {e}")
 
+
 if __name__ == "__main__":
     import argparse
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Scan documents from images.")
-    parser.add_argument("-i", "--input", type=str, required=True,
-                        help="Path to the input image directory")
-    parser.add_argument("-o", "--output", type=str, default="Output",
-                        help="Path to the output directory")
-    parser.add_argument("--canny1", type=int, default=0,
-                        help="First threshold for the Canny edge detector")
-    parser.add_argument("--canny2", type=int, default=100,
-                        help="Second threshold for the Canny edge detector")
-    parser.add_argument("--blur", type=int, default=5,
-                        help="Gaussian blur kernel size")
-    parser.add_argument("--method", type=str, default="adaptive",
-                        choices=["adaptive", "clahe", "otsu", "combined"],
-                        help="Thresholding method to use. Options are adaptive, clahe, otsu, and combined.")
-    parser.add_argument("--bw", action="store_true",
-                        help="Convert the image to black and white")
-    parser.add_argument("--kernel_size", type=int, default=3,
-                        help="Kernel size for morphological operations. Default is 3.")
+    parser.add_argument(
+        "-i",
+        "--input",
+        type=str,
+        required=True,
+        help="Path to the input image directory",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default="Output",
+        help="Path to the output directory",
+    )
+    parser.add_argument(
+        "--canny1",
+        type=int,
+        default=0,
+        help="First threshold for the Canny edge detector",
+    )
+    parser.add_argument(
+        "--canny2",
+        type=int,
+        default=100,
+        help="Second threshold for the Canny edge detector",
+    )
+    parser.add_argument("--blur", type=int, default=5, help="Gaussian blur kernel size")
+    parser.add_argument(
+        "--method",
+        type=str,
+        default="adaptive",
+        choices=["adaptive", "clahe", "otsu", "combined"],
+        help="Thresholding method to use. Options are adaptive, clahe, otsu, and combined.",
+    )
+    parser.add_argument(
+        "--bw", action="store_true", help="Convert the image to black and white"
+    )
+    parser.add_argument(
+        "--kernel_size",
+        type=int,
+        default=3,
+        help="Kernel size for morphological operations. Default is 3.",
+    )
 
     args = parser.parse_args()
-    
-    process_images_in_directory(args.input, args.output, args.canny1, args.canny2, args.blur, args.method, args.bw, args.kernel_size)
+
+    process_images_in_directory(
+        args.input,
+        args.output,
+        args.canny1,
+        args.canny2,
+        args.blur,
+        args.method,
+        args.bw,
+        args.kernel_size,
+    )
